@@ -1,0 +1,105 @@
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const uploadsDir = 'uploads';
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+
+const app = express();
+const port = 3000;
+
+app.use(express.json());
+app.use('/uploads', express.static('uploads'));
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage });
+
+let lostItems = [
+    {
+        name: 'Lost Wallet',
+        category: 'accessories',
+        description: 'Black leather wallet containing ID and cards.',
+        imageUrl: 'https://images.unsplash.com/photo-1593795899630-b6033c484ac1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        date: '2025-09-20',
+        venue: 'College Library'
+    },
+    {
+        name: 'Lost Phone',
+        category: 'electronics',
+        description: 'iPhone 12 in black case.',
+        imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        date: '2025-09-21',
+        venue: 'Cafeteria'
+    },
+    {
+        name: 'Lost Keys',
+        category: 'others',
+        description: 'Bunch of keys with a blue keychain.',
+        imageUrl: 'https://images.unsplash.com/photo-1587049352851-9d654233acca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        date: '2025-09-19',
+        venue: 'Classroom A101'
+    }
+];
+
+let foundItems = [
+    {
+        name: 'Found Wallet',
+        category: 'accessories',
+        description: 'Brown leather wallet, no ID.',
+        imageUrl: 'https://images.unsplash.com/photo-1614183090334-5e8e6d5a3de3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        date: '2025-09-22',
+        venue: 'Main Hall'
+    },
+    {
+        name: 'Found Phone',
+        category: 'electronics',
+        description: 'Android phone, locked.',
+        imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        date: '2025-09-18',
+        venue: 'Gym'
+    },
+    {
+        name: 'Found Keys',
+        category: 'others',
+        description: 'House keys with red tag.',
+        imageUrl: 'https://images.unsplash.com/photo-1621605815971-8deb9c197077?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        date: '2025-09-17',
+        venue: 'Parking Lot'
+    }
+];
+
+app.get('/api/lost', (req, res) => {
+    res.json(lostItems);
+});
+
+app.get('/api/found', (req, res) => {
+    res.json(foundItems);
+});
+
+app.post('/api/lost', upload.single('image'), (req, res) => {
+    const { name, category, description, date, venue } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+    lostItems.push({ name, category, description, imageUrl, date, venue });
+    res.json({ success: true });
+});
+
+app.post('/api/found', upload.single('image'), (req, res) => {
+    const { name, category, description, date, venue } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+    foundItems.push({ name, category, description, imageUrl, date, venue });
+    res.json({ success: true });
+});
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});
