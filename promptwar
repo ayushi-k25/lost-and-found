@@ -9,9 +9,9 @@
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 30px;
-            background: linear-gradient(135deg, #e6f3fa 0%, #b0e0e6 100%); /* Gradient light blue */
+            background: linear-gradient(135deg, #e6f3fa 0%, #b0e0e6 100%);
             color: #333;
-            background-image: url('https://images.unsplash.com/photo-1505664194779-8beaceb93744?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); /* Campus background */
+            background-image: url('https://images.unsplash.com/photo-1505664194779-8beaceb93744?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80');
             background-size: cover;
             background-attachment: fixed;
             background-position: center;
@@ -226,6 +226,12 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
+
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -318,17 +324,97 @@
     </div>
     
     <script>
+        // Fallback sample data in case backend is unavailable
+        const sampleLostItems = [
+            {
+                name: 'Lost Wallet',
+                category: 'accessories',
+                description: 'Black leather wallet containing ID and cards.',
+                imageUrl: 'https://images.unsplash.com/photo-1593795899630-b6033c484ac1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '2025-09-20',
+                venue: 'College Library'
+            },
+            {
+                name: 'Lost Phone',
+                category: 'electronics',
+                description: 'iPhone 12 in black case.',
+                imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '2025-09-21',
+                venue: 'Cafeteria'
+            },
+            {
+                name: 'Lost Keys',
+                category: 'others',
+                description: 'Bunch of keys with a blue keychain.',
+                imageUrl: 'https://images.unsplash.com/photo-1587049352851-9d654233acca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '2025-09-19',
+                venue: 'Classroom A101'
+            }
+        ];
+
+        const sampleFoundItems = [
+            {
+                name: 'Found Wallet',
+                category: 'accessories',
+                description: 'Brown leather wallet, no ID.',
+                imageUrl: 'https://images.unsplash.com/photo-1614183090334-5e8e6d5a3de3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '2025-09-22',
+                venue: 'Main Hall'
+            },
+            {
+                name: 'Found Phone',
+                category: 'electronics',
+                description: 'Android phone, locked.',
+                imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '2025-09-18',
+                venue: 'Gym'
+            },
+            {
+                name: 'Found Keys',
+                category: 'others',
+                description: 'House keys with red tag.',
+                imageUrl: 'https://images.unsplash.com/photo-1621605815971-8deb9c197077?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '2025-09-17',
+                venue: 'Parking Lot'
+            }
+        ];
+
+        async function checkBackend() {
+            try {
+                const response = await fetch('http://localhost:3000/api/lost', { method: 'HEAD' });
+                return response.ok;
+            } catch {
+                return false;
+            }
+        }
+
         async function displayItems(type, nameFilter = '', catFilter = '') {
             const list = document.getElementById(`${type}-list`);
             if (!list) return;
             list.innerHTML = '';
+            const isBackendAvailable = await checkBackend();
+            let items = [];
+
             try {
-                const response = await fetch(`http://localhost:3000/api/${type}`);
-                const items = await response.json();
+                if (isBackendAvailable) {
+                    const response = await fetch(`http://localhost:3000/api/${type}`);
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    items = await response.json();
+                } else {
+                    console.warn('Backend unavailable, using sample data.');
+                    items = type === 'lost' ? sampleLostItems : sampleFoundItems;
+                    list.innerHTML = '<p class="error-message">Backend server is not responding. Displaying sample data.</p>';
+                }
+
                 const filtered = items.filter(item => {
                     return (nameFilter === '' || item.name.toLowerCase().includes(nameFilter.toLowerCase())) &&
                            (catFilter === '' || item.category === catFilter);
                 });
+
+                if (filtered.length === 0) {
+                    list.innerHTML = '<p>No items found matching your criteria.</p>';
+                }
+
                 filtered.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'item';
@@ -346,8 +432,8 @@
                     list.appendChild(div);
                 });
             } catch (error) {
-                console.error('Error fetching items:', error);
-                list.innerHTML = '<p>Error loading items. Please try again later.</p>';
+                console.error(`Error fetching ${type} items:`, error.message);
+                list.innerHTML = `<p class="error-message">Error loading items: ${error.message}. Please ensure the backend server is running at http://localhost:3000.</p>`;
             }
         }
 
@@ -377,6 +463,7 @@
                     method: 'POST',
                     body: formData
                 });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const result = await response.json();
                 if (result.success) {
                     document.getElementById('lost-form').reset();
@@ -386,8 +473,8 @@
                     alert('Error submitting item. Please try again.');
                 }
             } catch (error) {
-                console.error('Error submitting lost item:', error);
-                alert('Error submitting item. Please try again.');
+                console.error('Error submitting lost item:', error.message);
+                alert(`Error submitting item: ${error.message}. Please ensure the backend server is running at http://localhost:3000.`);
             }
         }
 
@@ -417,6 +504,7 @@
                     method: 'POST',
                     body: formData
                 });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const result = await response.json();
                 if (result.success) {
                     document.getElementById('found-form').reset();
@@ -426,8 +514,8 @@
                     alert('Error submitting item. Please try again.');
                 }
             } catch (error) {
-                console.error('Error submitting found item:', error);
-                alert('Error submitting item. Please try again.');
+                console.error('Error submitting found item:', error.message);
+                alert(`Error submitting item: ${error.message}. Please ensure the backend server is running at http://localhost:3000.`);
             }
         }
 
